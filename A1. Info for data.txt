@@ -1,0 +1,5 @@
+PROPESCA: (2014 to 2019, includes both propesca and bienpesca data)
+link: https://datos.gob.mx/busca/dataset/propesca--incentivo-economico-directo-al-pescador-y-acuacultor
+nuevo link: https://historico.datos.gob.mx/busca/dataset/produccion-pesquera
+https://code.earthengine.google.com/?project=bienpescafelix
+padron_diesel_marino: https://www.datos.gob.mx/dataset/energeticos_pesqueros_acuicolas
