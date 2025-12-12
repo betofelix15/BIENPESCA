@@ -1,0 +1,107 @@
+#### Step 0. all preliminary stuff: loading libraries, working directories, 
+
+#### Step 1: data is loaded as raw files. These were downloaded from the Mexican government database. 
+
+Each year was loaded separately (using "windows-12" encoding for Spanish script) and each checked for missing data. We checked the column names to note any differences. 2021,2022,2023,and 2024 have a slight difference but the column order is the same. 
+
+The years with missing/NA's are 2017,2018,2019,2020, & 2022. A total of 544527 obs NA. 
+
+When we see the raw data in excel, it looks like it ends at 64387 observations but R has it listed as 83172 obs. This means R is adding these rows to the data unnecessarily. Since this is the case, we can rewrite this section to a loop where a row with all columns as NA is immediately removed. Additionally, the columns will be matched from the first observation, as the orders are the same, the only difference is "CLAVE OFICINA" and 'CLAVE DE OFICINA'. 
+
+The loop is made and the stuff that happened before is commented for reference.
+
+The loop automatically removes rows with NA's in all columns and binds to p_raw
+
+
+#### Step 2: Translate to English, all common names and correct grouping; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Data columns are translated to English but the actual values are not. The months go from characters (FEB, MAR, etc.) to numbers (2,3, etc.). The Ñ is replaced in offices to N. Offices that had a different name in the past are updated to the latest name, (i.e. Valdivia to Pijijipan). Any unnecessary spaces between quotations are removed. 
+Categories are restructured; Mero and Mero y Similar are combined, pepino and pepino de mar, fauna and fauna de acompanamiento, these are animals that were not meant to be caught that get caught in the nets, like seals, birds, etc. 
+
+Species remove the Ñ to N. Extra spaces after name is removed (trim whitespace). SE = "sin especificar". These are left alone. There are species that are listed in "OTRAS" when it should be listed in a specific category, we know becuase they are listed in both "OTRAS" and the correct category elsewhere. These are remapped by keywords (TIBURON, MERO, BAGRE, ETC.) and rejoined to the data. Another category for 'CANGREJO' was made to distinguish JAIBA from CANGREJO. (crabs were listed as 'OTRAS'.) MARLIN category was created. 
+
+Species was renamed as fish_name, because in spanish, the column is 'NOMBRE COMMUN' which does not fit exact species.
+Category was renamed as fish_category.
+
+
+
+#### Step 3:  NA's and commas in values/weight, missing---------------------------------------------------------------------
+
+Thanks to the work that was done when loading the data, there is no missing data and we can confirm that what was being loaded as empty rows was not real data (i.e. it looked like this: ,,,,,,,,,,).
+
+Commas were removed from unloaded weight and live weight then these were turned into numeric columns
+
+commas were removed from the value column (revenue) but it is not turned into numeric yet. There are three observations that have the words 'CAMARON' instead of a number value. These will turn to NA's after it becomes numeric. Take note of these when doing imputations later on. value was changed to a numeric column. Obs id: 946892 has 1500000,000 for the value for 10000 kg of camaron blanco. This is more than likely supposed to be a period instead of a comma, as the average price for camaron is about 150 peso per kilo. However, the observations above it have the likes of 1119613,589 pesos with 13595013 kg. When these are divided, they have a typical price about 240 per kilo, which makes sense. These will have their commas removed. Obs id 946892 will have its comma turned to a period. Take note of this. 
+
+Anything with a zero in weight and value is removed. We can't analyze these and it's likely that these are endangered species or unsellable catch. Either way, there is no way of imputing or analyzing this data.
+
+Scientific notation was removed to avoid confusion in conversion.
+
+cents are not rounded up yet. These will be rounded to nearest peso after checking for duplicates to maintain exactness in duplicates. 
+
+p_edit (the df being used is saved) as edited_production_(date).csv
+
+fix state names according to ids in catalogo de entidades federativas (link in comment)
+
+
+#### Step 4: Duplicate data ---------------------------------------------------------------------------------------------
+
+dup_df is grouped by year,month,state,office,origin, unloaded_weight_kg,live_weight_kg,value_mx,fish_name, fish_category. The number of times these are repeated, the duplicate id, and the original id (based on obs_id) is recorded. It is then ungrouped and a new column indicates if the row was duplicated or not by any dup_id greater than 1.
+
+131,396 obs are duplicates. Seems really high. however, these may be completions of fish licenses, which list limits to catch. A cooperative can report multiple catches in one month for all of their licenses, and for simplicity, divide them up evenly for each fisher. For this reason, we could aggregate them and save  as a df with duplicates identified for robustness check. ("production_data_duplicates_identified_not_removed.csv") # date of change recorded
+
+we can move forward with the data for the fish that is not duplicated, but we identify the original rows and if they had duplicate data then remove the subsequently duplicated data.
+
+file is saved as "production_data_duplicates_removed.csv"
+
+The date last saved is recorded in the code
+
+We will not remove dup_df from the environment because we want to make sure any imputations are done to that set as well.
+
+#### Step 5: imputations/adjustments --------------------------------------------------------------------------------
+# we must do this for p_nodup and dup_df
+# imputed and adjusted columns will be named column_imp_adj
+
+
+We start with observation 946892 which had its comma replaced by a period. 
+
+zero value_mx or NA value:
+# acuacultura se puede vender entonces debe tener un valor, so totoaba that is aquaculture is good
+# anything with a less than 1 kg of weight is probably dunnage or thrown back into the sea
+# any FAUNA DE ACOMPANAMIENTO, TIBURON, OTRAS is removed
+
+a loop goes through each observation in zero_value_mx, if it is not one of the above categories then the average price is calculated from the dataset without these observations and then is multiplied to the weight to get the value. 
+
+
+For weight, a loop goes through the observations where either unloaded or live weight is missing. If there is unloaded weight but no live weight, unloaded weight replaces it. If there is live weight but no unloaded weight, then live weight replaces. If both are missing but there is a value above 1000 pesos, then the price is calculated for that observation from its respective fish_name, year, and state. The value is divided by the price to find the weight. 
+
+We verify any NA's exist.
+
+we identify which rows have imputations for unloaded weight, live weight, and zero weight by comparing these to the imputed values and seeing which are different.
+
+We save them as "production_data_nodup_imputations_included.csv" and "production_data_duplicates_imputations_included.csv"
+
+### step 6. final edits, removals and name changes ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+we remove any observations with a zero for imputed value (we cannot do anything with those at this point).
+
+We also remove any observation with zero for BOTH imputed unloaded and live weight.
+
+
+We rename anything with value to value_mxn to identify that it is in MXN (Mexican Pesos)
+
+We create calculate unimputed price in mxn per kg by dividing revenue by unloaded weight, if no unloaded weight, then by live weight.
+We calculate imputed price in mxn per kg by dividing imputed revenue by imputed unloaded weight.
+
+We reposition columns in a sensible order
+
+We round numeric columns to second decimal
+
+We rearrange the data by year, month, state, state_id, office, office_id, fish_category, fish_name
+
+we save both duplicate and no duplicate final production datasets as:
+"final_production_no_duplicates.csv" and "final_production_with_duplicates.csv"
+
+### explanation of variables ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+a df is made with the explanation for each variable
+
+

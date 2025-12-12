@@ -1,0 +1,13 @@
+The process of cleaning the PROPESCA/BIENPESCA data
+
+
+GOAL: We want the BP/Propesca exposure to be attributed to conapesca offices and identify any key indicators of variance in this data that can inform the study: What is the effect of the propesca/bienpesca exposure to catch data?
+
+Explanation of the data:
+Site: 
+bp_year_recipients: https://historico.datos.gob.mx/busca/dataset?q=bienpesca&sort=score+desc%2C+metadata_modified+desc
+
+propesca_2014_2019: https://historico.datos.gob.mx/busca/dataset/propesca--incentivo-economico-directo-al-pescador-y-acuacultor
+
+bienpesca_2020_2024: https://historico.datos.gob.mx/busca/dataset/bienpesca--incentivo-economico-directo-al-pescador-y-acuacultor
+
